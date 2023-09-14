@@ -5,11 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/distribyted/distribyted/config"
-	"github.com/mattn/go-colorable"
+	"github.com/RacoonMediaServer/distribyted/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const FileName = "distribyted.log"

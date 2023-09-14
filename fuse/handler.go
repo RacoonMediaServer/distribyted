@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/RacoonMediaServer/distribyted/fs"
 	"github.com/billziss-gh/cgofuse/fuse"
-	"github.com/distribyted/distribyted/fs"
 	"github.com/rs/zerolog/log"
 )
 

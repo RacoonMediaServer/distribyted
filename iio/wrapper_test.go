@@ -4,8 +4,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/distribyted/distribyted/fs"
-	"github.com/distribyted/distribyted/iio"
+	"github.com/RacoonMediaServer/distribyted/fs"
+	"github.com/RacoonMediaServer/distribyted/iio"
 	"github.com/stretchr/testify/require"
 )
 

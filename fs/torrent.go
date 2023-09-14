@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/RacoonMediaServer/distribyted/iio"
 	"github.com/anacrolix/missinggo/v2"
 	"github.com/anacrolix/torrent"
-	"github.com/distribyted/distribyted/iio"
 )
 
 var _ Filesystem = &Torrent{}

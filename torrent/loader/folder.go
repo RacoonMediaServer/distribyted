@@ -5,7 +5,7 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/distribyted/distribyted/config"
+	"github.com/RacoonMediaServer/distribyted/config"
 )
 
 var _ Loader = &Folder{}

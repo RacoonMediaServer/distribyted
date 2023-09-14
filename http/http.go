@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/RacoonMediaServer/distribyted"
+	"github.com/RacoonMediaServer/distribyted/config"
+	"github.com/RacoonMediaServer/distribyted/torrent"
 	"github.com/anacrolix/missinggo/v2/filecache"
-	"github.com/distribyted/distribyted"
-	"github.com/distribyted/distribyted/config"
-	"github.com/distribyted/distribyted/torrent"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/shurcooL/httpfs/html/vfstemplate"

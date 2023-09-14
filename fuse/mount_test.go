@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/distribyted/distribyted/fs"
+	"github.com/RacoonMediaServer/distribyted/fs"
 	"github.com/stretchr/testify/require"
 )
 
