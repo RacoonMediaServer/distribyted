@@ -10,8 +10,6 @@ import (
 	"github.com/RacoonMediaServer/distribyted/fs"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
-	"github.com/distribyted/distribyted/fs"
-	"github.com/distribyted/distribyted/torrent/loader"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
