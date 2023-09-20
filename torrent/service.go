@@ -1,14 +1,13 @@
 package torrent
 
 import (
+	"bytes"
 	"errors"
-	"fmt"
 	"path"
 	"sync"
 	"time"
 
 	"github.com/RacoonMediaServer/distribyted/fs"
-	"github.com/RacoonMediaServer/distribyted/torrent/loader"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/rs/zerolog"
@@ -23,14 +22,17 @@ type Service struct {
 	mu  sync.Mutex
 	fss map[string]fs.Filesystem
 
-	loaders []loader.Loader
-	db      loader.LoaderAdder
+	loaders []DatabaseLoader
 
 	log                     zerolog.Logger
 	addTimeout, readTimeout int
 }
 
-func NewService(loaders []loader.Loader, db loader.LoaderAdder, stats *Stats, c *torrent.Client, addTimeout, readTimeout int) *Service {
+type DatabaseLoader interface {
+	ListTorrents() (map[string][][]byte, error)
+}
+
+func NewService(loaders []DatabaseLoader, stats *Stats, c *torrent.Client, addTimeout, readTimeout int) *Service {
 	l := log.Logger.With().Str("component", "torrent-service").Logger()
 	return &Service{
 		log:         l,
@@ -38,48 +40,39 @@ func NewService(loaders []loader.Loader, db loader.LoaderAdder, stats *Stats, c 
 		c:           c,
 		fss:         make(map[string]fs.Filesystem),
 		loaders:     loaders,
-		db:          db,
 		addTimeout:  addTimeout,
 		readTimeout: readTimeout,
 	}
 }
 
+func isMagnetLink(data []byte) bool {
+	const magnetLinkSign = "magnet:"
+	if len(data) < len(magnetLinkSign) {
+		return false
+	}
+	return string(data[:len(magnetLinkSign)]) == magnetLinkSign
+}
+
 func (s *Service) Load() (map[string]fs.Filesystem, error) {
 	// Load from config
-	s.log.Info().Msg("adding torrents from configuration")
+	s.log.Info().Msg("adding torrents from sources")
 	for _, loader := range s.loaders {
 		if err := s.load(loader); err != nil {
 			return nil, err
 		}
 	}
-
-	// Load from DB
-	s.log.Info().Msg("adding torrents from database")
-	return s.fss, s.load(s.db)
+	return s.fss, nil
 }
 
-func (s *Service) load(l loader.Loader) error {
-	list, err := l.ListMagnets()
+func (s *Service) load(l DatabaseLoader) error {
+	list, err := l.ListTorrents()
 	if err != nil {
 		return err
 	}
 	for r, ms := range list {
 		s.addRoute(r)
 		for _, m := range ms {
-			if err := s.addMagnet(r, m); err != nil {
-				return err
-			}
-		}
-	}
-
-	list, err = l.ListTorrentPaths()
-	if err != nil {
-		return err
-	}
-	for r, ms := range list {
-		s.addRoute(r)
-		for _, p := range ms {
-			if err := s.addTorrentPath(r, p); err != nil {
+			if _, err := s.add(r, m); err != nil {
 				return err
 			}
 		}
@@ -88,30 +81,36 @@ func (s *Service) load(l loader.Loader) error {
 	return nil
 }
 
-func (s *Service) AddMagnet(r, m string) error {
-	if err := s.addMagnet(r, m); err != nil {
-		return err
-	}
-
-	// Add to db
-	return s.db.AddMagnet(r, m)
+func (s *Service) Add(r string, content []byte) (string, error) {
+	return s.add(r, content)
 }
 
-func (s *Service) addTorrentPath(r, p string) error {
-	// Add to client
-	t, err := s.c.AddTorrentFromFile(p)
-	if err != nil {
-		return err
+func (s *Service) add(r string, content []byte) (string, error) {
+	var spec *torrent.TorrentSpec
+	isMagnet := isMagnetLink(content)
+	if !isMagnet {
+		mi, err := metainfo.Load(bytes.NewReader(content))
+		if err != nil {
+			return "", err
+		}
+		spec = torrent.TorrentSpecFromMetaInfo(mi)
+	} else {
+		var err error
+		spec, err = torrent.TorrentSpecFromMagnetUri(string(content))
+		if err != nil {
+			return "", err
+		}
 	}
 
-	return s.addTorrent(r, t)
-}
+	opts := torrent.AddTorrentOpts{
+		InfoHash:  spec.InfoHash,
+		ChunkSize: spec.ChunkSize,
+	}
 
-func (s *Service) addMagnet(r, m string) error {
-	// Add to client
-	t, err := s.c.AddMagnet(m)
-	if err != nil {
-		return err
+	t, _ := s.c.AddTorrentOpt(opts)
+	if err := t.MergeSpec(spec); err != nil {
+		t.Drop()
+		return "", err
 	}
 
 	return s.addTorrent(r, t)
@@ -131,14 +130,14 @@ func (s *Service) addRoute(r string) {
 	}
 }
 
-func (s *Service) addTorrent(r string, t *torrent.Torrent) error {
+func (s *Service) addTorrent(r string, t *torrent.Torrent) (string, error) {
 	// only get info if name is not available
 	if t.Info() == nil {
 		s.log.Info().Str("hash", t.InfoHash().String()).Msg("getting torrent info")
 		select {
 		case <-time.After(time.Duration(s.addTimeout) * time.Second):
 			s.log.Error().Str("hash", t.InfoHash().String()).Msg("timeout getting torrent info")
-			return errors.New("timeout getting torrent info")
+			return "", errors.New("timeout getting torrent info")
 		case <-t.GotInfo():
 			s.log.Info().Str("hash", t.InfoHash().String()).Msg("obtained torrent info")
 		}
@@ -155,26 +154,16 @@ func (s *Service) addTorrent(r string, t *torrent.Torrent) error {
 
 	tfs, ok := s.fss[folder].(*fs.Torrent)
 	if !ok {
-		return errors.New("error adding torrent to filesystem")
+		return "", errors.New("error adding torrent to filesystem")
 	}
 
 	tfs.AddTorrent(t)
 	s.log.Info().Str("name", t.Info().Name).Str("route", r).Msg("torrent added")
 
-	return nil
+	return r, nil
 }
 
 func (s *Service) RemoveFromHash(r, h string) error {
-	// Remove from db
-	deleted, err := s.db.RemoveFromHash(r, h)
-	if err != nil {
-		return err
-	}
-
-	if !deleted {
-		return fmt.Errorf("element with hash %v on route %v cannot be removed", h, r)
-	}
-
 	// Remove from stats
 	s.s.Del(r, h)
 
