@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/RacoonMediaServer/distribyted/iio"
 	"github.com/bodgit/sevenzip"
-	"github.com/distribyted/distribyted/iio"
 	"github.com/nwaples/rardecode/v2"
 )
 

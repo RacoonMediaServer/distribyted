@@ -1,6 +1,6 @@
 package loader
 
-import "github.com/distribyted/distribyted/config"
+import "github.com/RacoonMediaServer/distribyted/config"
 
 var _ Loader = &Config{}
 

@@ -1,4 +1,4 @@
-module github.com/distribyted/distribyted
+module github.com/RacoonMediaServer/distribyted
 
 go 1.20
 
