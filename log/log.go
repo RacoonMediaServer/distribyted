@@ -1,6 +1,8 @@
 package log
 
 import (
+	"github.com/mattn/go-colorable"
+	"github.com/natefinch/lumberjack"
 	"io"
 	"os"
 	"path/filepath"
