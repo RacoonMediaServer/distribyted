@@ -113,7 +113,7 @@ func (s *Service) add(r string, content []byte) (string, error) {
 		return "", err
 	}
 
-	return s.addTorrent(r, t)
+	return t.Name(), s.addTorrent(r, t)
 
 }
 
@@ -130,14 +130,14 @@ func (s *Service) addRoute(r string) {
 	}
 }
 
-func (s *Service) addTorrent(r string, t *torrent.Torrent) (string, error) {
+func (s *Service) addTorrent(r string, t *torrent.Torrent) error {
 	// only get info if name is not available
 	if t.Info() == nil {
 		s.log.Info().Str("hash", t.InfoHash().String()).Msg("getting torrent info")
 		select {
 		case <-time.After(time.Duration(s.addTimeout) * time.Second):
 			s.log.Error().Str("hash", t.InfoHash().String()).Msg("timeout getting torrent info")
-			return "", errors.New("timeout getting torrent info")
+			return errors.New("timeout getting torrent info")
 		case <-t.GotInfo():
 			s.log.Info().Str("hash", t.InfoHash().String()).Msg("obtained torrent info")
 		}
@@ -154,13 +154,13 @@ func (s *Service) addTorrent(r string, t *torrent.Torrent) (string, error) {
 
 	tfs, ok := s.fss[folder].(*fs.Torrent)
 	if !ok {
-		return "", errors.New("error adding torrent to filesystem")
+		return errors.New("error adding torrent to filesystem")
 	}
 
 	tfs.AddTorrent(t)
 	s.log.Info().Str("name", t.Info().Name).Str("route", r).Msg("torrent added")
 
-	return r, nil
+	return nil
 }
 
 func (s *Service) RemoveFromHash(r, h string) error {
