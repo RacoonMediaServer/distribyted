@@ -70,7 +70,7 @@ func (s *Service) load(l DatabaseLoader) error {
 		return err
 	}
 	for r, ms := range list {
-		s.addRoute(r)
+		s.AddRoute(r)
 		for _, m := range ms {
 			if _, err := s.add(r, m); err != nil {
 				return err
@@ -117,7 +117,7 @@ func (s *Service) add(r string, content []byte) (string, error) {
 
 }
 
-func (s *Service) addRoute(r string) {
+func (s *Service) AddRoute(r string) {
 	s.s.AddRoute(r)
 
 	// Add to filesystems

@@ -39,8 +39,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require github.com/RacoonMediaServer/distribyted v1.0.3
-
 require (
 	github.com/ajwerner/btree v0.0.0-20211221152037-f427b3e689c0 // indirect
 	github.com/alecthomas/atomic v0.1.0-alpha2 // indirect
