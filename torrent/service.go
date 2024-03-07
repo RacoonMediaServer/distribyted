@@ -72,7 +72,7 @@ func (s *Service) load(l DatabaseLoader) error {
 	for r, ms := range list {
 		s.AddRoute(r)
 		for _, m := range ms {
-			if _, err := s.add(r, m); err != nil {
+			if _, _, err := s.add(r, m); err != nil {
 				return err
 			}
 		}
@@ -81,24 +81,24 @@ func (s *Service) load(l DatabaseLoader) error {
 	return nil
 }
 
-func (s *Service) Add(r string, content []byte) (string, error) {
+func (s *Service) Add(r string, content []byte) (string, string, error) {
 	return s.add(r, content)
 }
 
-func (s *Service) add(r string, content []byte) (string, error) {
+func (s *Service) add(r string, content []byte) (string, string, error) {
 	var spec *torrent.TorrentSpec
 	isMagnet := isMagnetLink(content)
 	if !isMagnet {
 		mi, err := metainfo.Load(bytes.NewReader(content))
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		spec = torrent.TorrentSpecFromMetaInfo(mi)
 	} else {
 		var err error
 		spec, err = torrent.TorrentSpecFromMagnetUri(string(content))
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
@@ -110,10 +110,10 @@ func (s *Service) add(r string, content []byte) (string, error) {
 	t, _ := s.c.AddTorrentOpt(opts)
 	if err := t.MergeSpec(spec); err != nil {
 		t.Drop()
-		return "", err
+		return "", "", err
 	}
 
-	return t.Name(), s.addTorrent(r, t)
+	return t.Name(), t.InfoHash().HexString(), s.addTorrent(r, t)
 
 }
 
